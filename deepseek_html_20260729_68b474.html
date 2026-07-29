@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OSINT Toolkit | Zo for Alpha</title>
+    <style>
+        :root {
+            --bg: #0a0a0f;
+            --card: #13131a;
+            --border: #252530;
+            --text: #d4d4e0;
+            --accent: #6c5ce7;
+            --accent2: #e74c3c;
+            --green: #2ecc71;
+            --input-bg: #1a1a25;
+            --radius: 14px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Segoe UI', 'Inter', system-ui, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container { width: 100%; max-width: 700px; }
+        header { text-align: center; margin-bottom: 30px; }
+        header h1 {
+            font-size: 2.2rem;
+            background: linear-gradient(135deg, var(--accent), #a29bfe);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 6px;
+        }
+        header p { opacity: 0.6; font-size: 0.9rem; }
+
+        .tab-nav {
+            display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px;
+            background: var(--card); padding: 8px; border-radius: var(--radius);
+            border: 1px solid var(--border);
+        }
+        .tab-btn {
+            flex: 1; min-width: 80px; padding: 10px 14px; background: transparent;
+            border: none; color: #aaa; border-radius: 10px; cursor: pointer;
+            font-weight: 600; font-size: 0.85rem; transition: 0.2s; white-space: nowrap;
+        }
+        .tab-btn.active { background: var(--accent); color: #fff; }
+
+        .panel {
+            display: none; background: var(--card); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 24px; animation: fade 0.2s;
+        }
+        .panel.active { display: block; }
+        @keyframes fade { from { opacity: 0; transform: translateY(6px); } }
+
+        h2 { font-size: 1.4rem; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        input, textarea, button { font-family: inherit; }
+        input[type="text"], textarea {
+            width: 100%; padding: 12px 16px; background: var(--input-bg);
+            border: 1px solid var(--border); border-radius: 10px; color: #fff;
+            font-size: 0.95rem; outline: none;
+        }
+        textarea { min-height: 100px; resize: vertical; }
+        .btn {
+            background: var(--accent); color: #fff; border: none;
+            padding: 12px 24px; border-radius: 10px; font-weight: 600;
+            cursor: pointer; transition: 0.2s; display: inline-flex;
+            align-items: center; gap: 6px; margin-top: 12px;
+        }
+        .btn:hover { opacity: 0.9; }
+        .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+
+        .result-box {
+            margin-top: 18px; padding: 16px; background: #111118;
+            border-radius: 10px; border: 1px solid var(--border);
+            max-height: 300px; overflow-y: auto; white-space: pre-wrap;
+            font-size: 0.85rem; line-height: 1.5;
+        }
+        .result-box.error { border-color: var(--accent2); color: #e74c3c; }
+
+        .flex-row { display: flex; gap: 12px; flex-wrap: wrap; }
+
+        .exif-preview { max-width: 100%; max-height: 250px; border-radius: 10px; margin-top: 12px; display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🧠 OSINT Toolkit</h1>
+            <p>Untuk riset keamanan & edukasi. Gunakan dengan bijak.</p>
+        </header>
+
+        <!-- Tab Navigation -->
+        <div class="tab-nav">
+            <button class="tab-btn active" data-tab="email">📧 Email</button>
+            <button class="tab-btn" data-tab="ip">🌍 IP Geolocation</button>
+            <button class="tab-btn" data-tab="username">👤 Username</button>
+            <button class="tab-btn" data-tab="image">🖼️ Reverse Image</button>
+            <button class="tab-btn" data-tab="exif">📸 EXIF Viewer</button>
+            <button class="tab-btn" data-tab="dork">🔍 Google Dorking</button>
+        </div>
+
+        <!-- Panel 1: Email Breach -->
+        <div class="panel active" id="panel-email">
+            <h2>📧 Cek Kebocoran Email</h2>
+            <p style="opacity:0.7;margin-bottom:14px;">Menggunakan Have I Been Pwned API (rate limited). Masukkan email target.</p>
+            <input type="text" id="emailInput" placeholder="contoh@email.com">
+            <button class="btn" onclick="checkEmail()">🔍 Cek Sekarang</button>
+            <div class="result-box" id="emailResult"></div>
+        </div>
+
+        <!-- Panel 2: IP Geolocation (FIXED) -->
+        <div class="panel" id="panel-ip">
+            <h2>🌍 IP Geolocation</h2>
+            <p style="opacity:0.7;margin-bottom:14px;">Dapatkan perkiraan lokasi dari alamat IP. Kosongkan untuk IP Anda sendiri.</p>
+            <input type="text" id="ipInput" placeholder="192.168.1.1">
+            <button class="btn" onclick="lookupIP()">📍 Lacak IP</button>
+            <div class="result-box" id="ipResult"></div>
+        </div>
+
+        <!-- Panel 3: Username Search -->
+        <div class="panel" id="panel-username">
+            <h2>👤 Cari Username</h2>
+            <p style="opacity:0.7;margin-bottom:14px;">Buka tautan pencarian di berbagai platform.</p>
+            <input type="text" id="usernameInput" placeholder="username">
+            <div class="flex-row" style="margin-top:14px;">
+                <button class="btn" onclick="searchUsername('instagram')">📷 Instagram</button>
+                <button class="btn" onclick="searchUsername('twitter')">🐦 Twitter</button>
+                <button class="btn" onclick="searchUsername('github')">🐱 GitHub</button>
+                <button class="btn" onclick="searchUsername('reddit')">🤖 Reddit</button>
+                <button class="btn" onclick="searchUsername('tiktok')">🎵 TikTok</button>
+                <button class="btn" onclick="searchUsername('youtube')">▶️ YouTube</button>
+            </div>
+        </div>
+
+        <!-- Panel 4: Reverse Image -->
+        <div class="panel" id="panel-image">
+            <h2>🖼️ Reverse Image Search</h2>
+            <p style="opacity:0.7;margin-bottom:14px;">Upload gambar dan cari di Google Images / TinEye.</p>
+            <input type="file" id="imageFile" accept="image/*" onchange="previewImage()">
+            <img id="imagePreview" class="exif-preview">
+            <div class="flex-row" style="margin-top:14px;">
+                <button class="btn" onclick="reverseGoogle()">🔍 Google Images</button>
+                <button class="btn" onclick="reverseTinEye()">👁️ TinEye</button>
+            </div>
+            <p style="opacity:0.5;font-size:0.8rem;margin-top:8px;">* Gambar akan diupload ke imgbb untuk mendapatkan URL publik.</p>
+        </div>
+
+        <!-- Panel 5: EXIF Viewer -->
+        <div class="panel" id="panel-exif">
+            <h2>📸 EXIF Metadata Viewer</h2>
+            <p style="opacity:0.7;margin-bottom:14px;">Unggah gambar untuk melihat metadata (GPS, kamera, dll).</p>
+            <input type="file" id="exifFile" accept="image/*" onchange="readEXIF()">
+            <div class="result-box" id="exifResult"></div>
+        </div>
+
+        <!-- Panel 6: Google Dorking -->
+        <div class="panel" id="panel-dork">
+            <h2>🔍 Google Dorking</h2>
+            <p style="opacity:0.7;margin-bottom:14px;">Gunakan operator pencarian khusus.</p>
+            <textarea id="dorkQuery" placeholder='intitle:"index of" "parent directory"'>intitle:"index of" "parent directory"</textarea>
+            <button class="btn" onclick="executeDork()">🚀 Cari di Google</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/exif-js"></script>
+    <script>
+        // Tab switching
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+            });
+        });
+
+        // 1. Email Breach Check (HIBP)
+        async function checkEmail() {
+            const email = document.getElementById('emailInput').value.trim();
+            const resDiv = document.getElementById('emailResult');
+            resDiv.innerHTML = '⏳ Mengecek...';
+            resDiv.className = 'result-box';
+            if (!email) { resDiv.innerHTML = '❌ Masukkan email.'; resDiv.classList.add('error'); return; }
+
+            try {
+                const resp = await fetch(`https://haveibeenpwned.com/api/v3/breachedaccount/${encodeURIComponent(email)}`);
+                if (resp.status === 404) {
+                    resDiv.innerHTML = `✅ <b>${email}</b> tidak ditemukan dalam kebocoran yang diketahui.`;
+                } else if (resp.status === 200) {
+                    const breaches = await resp.json();
+                    let html = `⚠️ <b>${email}</b> ditemukan dalam <b>${breaches.length}</b> kebocoran:\n`;
+                    breaches.forEach(b => { html += `\n🔹 <b>${b.Name}</b> (${b.Domain}) – ${b.BreachDate}`; });
+                    resDiv.innerHTML = html;
+                } else if (resp.status === 401) {
+                    resDiv.innerHTML = '🔐 API key diperlukan untuk request banyak. Coba lagi nanti.';
+                } else {
+                    resDiv.innerHTML = `❌ Error ${resp.status}. Mungkin rate limited.`;
+                }
+            } catch (e) {
+                resDiv.innerHTML = '❌ Gagal menghubungi API. Pastikan terhubung internet.';
+                resDiv.classList.add('error');
+            }
+        }
+
+        // 2. IP Geolocation (FIXED - pakai ipapi.co yang HTTPS)
+        async function lookupIP() {
+            const ip = document.getElementById('ipInput').value.trim();
+            const resDiv = document.getElementById('ipResult');
+            resDiv.innerHTML = '⏳ Melacak...';
+            resDiv.className = 'result-box';
+            const url = ip ? `https://ipapi.co/${ip}/json/` : `https://ipapi.co/json/`;
+            try {
+                const resp = await fetch(url);
+                const data = await resp.json();
+                if (data.error) {
+                    resDiv.innerHTML = '❌ Gagal: ' + (data.reason || 'IP tidak valid');
+                    resDiv.classList.add('error');
+                } else {
+                    resDiv.innerHTML = `
+                🌍 <b>IP:</b> ${data.ip}<br>
+                🏙️ <b>Kota:</b> ${data.city || 'N/A'}<br>
+                🗺️ <b>Region:</b> ${data.region || 'N/A'}<br>
+                🇨🇿 <b>Negara:</b> ${data.country_name || 'N/A'}<br>
+                📡 <b>ISP:</b> ${data.org || 'N/A'}<br>
+                📍 <b>Koordinat:</b> ${data.latitude}, ${data.longitude}<br>
+                🗺️ <a href="https://www.google.com/maps?q=${data.latitude},${data.longitude}" target="_blank">Lihat di Google Maps</a>
+              `;
+                }
+            } catch (e) {
+                resDiv.innerHTML = '❌ Gagal menghubungi API. Pastikan terhubung internet.';
+                resDiv.classList.add('error');
+            }
+        }
+
+        // 3. Username Search
+        function searchUsername(platform) {
+            const username = document.getElementById('usernameInput').value.trim();
+            if (!username) { alert('Masukkan username dulu.'); return; }
+            const urls = {
+                instagram: `https://www.instagram.com/${username}/`,
+                twitter: `https://twitter.com/${username}`,
+                github: `https://github.com/${username}`,
+                reddit: `https://www.reddit.com/user/${username}`,
+                tiktok: `https://www.tiktok.com/@${username}`,
+                youtube: `https://www.youtube.com/@${username}`
+            };
+            window.open(urls[platform], '_blank');
+        }
+
+        // 4. Reverse Image (upload ke imgbb)
+        let uploadedImageUrl = null;
+        async function previewImage() {
+            const file = document.getElementById('imageFile').files[0];
+            if (!file) return;
+            const preview = document.getElementById('imagePreview');
+            preview.src = URL.createObjectURL(file);
+            preview.style.display = 'block';
+            const form = new FormData();
+            form.append('image', file);
+            // GANTI API KEY IMGBB DENGAN PUNYA SENDIRI (daftar gratis di imgbb.com)
+            const imgbbApiKey = '23f5f3e46c4e8c6e7e0b3c2b1d0a9f8e'; // demo key, mungkin mati
+            try {
+                const resp = await fetch(`https://api.imgbb.com/1/upload?key=${imgbbApiKey}`, { method: 'POST', body: form });
+                const json = await resp.json();
+                if (json.success) {
+                    uploadedImageUrl = json.data.url;
+                } else {
+                    alert('Upload gagal. Ganti API key imgbb di kode dengan milik sendiri (daftar gratis di imgbb.com).');
+                }
+            } catch (e) {
+                alert('Upload gagal, cek koneksi.');
+            }
+        }
+
+        function reverseGoogle() {
+            if (!uploadedImageUrl) { alert('Upload gambar dulu.'); return; }
+            window.open(`https://lens.google.com/uploadbyurl?url=${encodeURIComponent(uploadedImageUrl)}`, '_blank');
+        }
+        function reverseTinEye() {
+            if (!uploadedImageUrl) { alert('Upload gambar dulu.'); return; }
+            window.open(`https://tineye.com/search?url=${encodeURIComponent(uploadedImageUrl)}`, '_blank');
+        }
+
+        // 5. EXIF Viewer
+        function readEXIF() {
+            const file = document.getElementById('exifFile').files[0];
+            const resDiv = document.getElementById('exifResult');
+            if (!file) { resDiv.innerHTML = '❌ Pilih file gambar.'; return; }
+            resDiv.innerHTML = '⏳ Membaca metadata...';
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.src = e.target.result;
+                img.onload = function() {
+                    EXIF.getData(img, function() {
+                        const allMeta = EXIF.getAllTags(this);
+                        if (!allMeta || Object.keys(allMeta).length === 0) {
+                            resDiv.innerHTML = 'ℹ️ Tidak ada metadata EXIF yang ditemukan.';
+                            return;
+                        }
+                        let html = '';
+                        for (const [key, value] of Object.entries(allMeta)) {
+                            html += `<b>${key}:</b> ${value}\n`;
+                        }
+                        if (allMeta.GPSLatitude) {
+                            const lat = allMeta.GPSLatitude[0] + allMeta.GPSLatitude[1]/60 + allMeta.GPSLatitude[2]/3600;
+                            const lon = allMeta.GPSLongitude[0] + allMeta.GPSLongitude[1]/60 + allMeta.GPSLongitude[2]/3600;
+                            const latRef = allMeta.GPSLatitudeRef || 'N';
+                            const lonRef = allMeta.GPSLongitudeRef || 'E';
+                            const finalLat = latRef === 'S' ? -lat : lat;
+                            const finalLon = lonRef === 'W' ? -lon : lon;
+                            html += `\n📍 <b>GPS:</b> ${finalLat.toFixed(5)}, ${finalLon.toFixed(5)}`;
+                            html += `\n🗺️ <a href="https://www.google.com/maps?q=${finalLat},${finalLon}" target="_blank">Lihat di Google Maps</a>`;
+                        }
+                        resDiv.innerHTML = html;
+                    });
+                };
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // 6. Google Dorking
+        function executeDork() {
+            const query = document.getElementById('dorkQuery').value.trim();
+            if (!query) { alert('Masukkan query dork.'); return; }
+            window.open(`https://www.google.com/search?q=${encodeURIComponent(query)}`, '_blank');
+        }
+    </script>
+</body>
+</html>
